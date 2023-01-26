@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 # Config parameters
 FILE_NAME = 'wiitdb.txt'
-START_FROM = 2000
+START_FROM = 0
 THREADS = 24
 URLS = ['https://art.gametdb.com/wii/coverfullHQ/US/', 'https://art.gametdb.com/wii/coverfullHQ2/US/']
 
@@ -58,29 +58,35 @@ with open('codes.txt', 'w') as f:
 
 # Main function, it uses the code for a certain game and downloads the cover from the specified URL's
 # If a get from an URL fails it tries from the next one on the list and so on
-# If all URL fails for a certain code it lower the total amount of covers to download
+
 def getCover(code):
     global totalCount
+    #print('Looking for ', code)
     for url in URLS:
         request = requests.get(url + code + '.png', stream = True)
         if request.status_code == 200:
             directory = coverPath + '\\' + code + '.png'
             with open(directory, 'wb') as f:
                 shutil.copyfileobj(request.raw, f)
+            print('Cover Downloaded for code ', code)
             return
-        
+    
+    # If all URLs fail for a certain code it lowers the total amount of covers to download
+    if request.status_code != 200:
         print('Cover not Found for code: ', code)
         totalCount -= 1
 
-# Multi-Threaded Execution of the download
-with ThreadPoolExecutor(max_workers = THREADS) as executor:
-    futures = [executor.submit(getCover, code) for code in codes]
+def downloadAll():
+    global imageCount
+    global totalCount
+    # Multi-Threaded Execution of the download
+    with ThreadPoolExecutor(max_workers = THREADS) as executor:
+        futures = [executor.submit(getCover, code) for code in codes]
 
-    # When a task is completed we do this
-    for future in concurrent.futures.as_completed(futures):
-        try:
-            imageCount += 1
-            print('Image ', imageCount, '/', totalCount)
-        except Exception as e:
-            print('Looks like something went wrong:', e)
-
+        # When a task is completed we do this
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                imageCount += 1
+                print('Image ', imageCount, '/', totalCount)
+            except Exception as e:
+                print('Looks like something went wrong:', e)
